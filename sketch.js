@@ -26,8 +26,7 @@ const INITIAL_BALL_SPEED = 5;
 // スコア設定
 let playerScore = 0;
 let cpuScore = 0;
-// --- 変更点 1: クリア点数をランダムにする ---
-let MAX_SCORE = 3; // setupまたはstartGameで初期化されます
+let MAX_SCORE = 3; 
 
 let gameActive = false; 
 
@@ -39,25 +38,52 @@ const DUSTY_GREEN = '#8FB9AA';
  * setup() は一度だけ実行されます。
  */
 function setup() {
-    createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+    // --- 修正点 1: キャンバスにIDを設定 ---
+    let canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+    canvas.id('myCanvas'); 
+    // --- 修正点 1 終わり ---
+    
     noStroke(); 
     
-    // パドルの初期位置 (初期の高さを使用)
+    // パドルの初期位置
     playerPaddleY = CANVAS_HEIGHT / 2 - INITIAL_PADDLE_HEIGHT / 2;
     cpuPaddleY = CANVAS_HEIGHT / 2 - INITIAL_PADDLE_HEIGHT / 2;
     
     // ゲーム開始前の初期化
     resetGame();
+
+    // --- 修正点 4: グローバルなキーボードリスナーを設定 ---
+    // ブラウザ全体でキー入力を監視するため、Web環境でも確実に動作します。
+    document.addEventListener('keydown', handleGlobalKey);
 }
 
 /**
- * resetGame() はゲームの初回起動時やリスタートが必要な場合に呼ばれる関数です。
- * ただし、今回の要件ではリスタートがないため、初回起動時のみ使用します。
+ * グローバルなキーボードイベントハンドラ (Pキーの強制勝利用)
+ */
+function handleGlobalKey(event) {
+    // Pキー (プレイヤー勝利デバッグ)
+    if (event.key === 'p' || event.key === 'P') {
+        // ゲームがアクティブな時のみ実行
+        if (gameActive) {
+            // プレイヤーのスコアを強制的にMAX_SCOREに設定し、勝利判定をトリガー
+            playerScore = MAX_SCORE;
+            gameActive = false;
+            
+            // ボールも停止させる
+            ballSpeedX = 0;
+            ballSpeedY = 0;
+            
+            console.log("Debug: Player Forced Win triggered by 'P' key.");
+        }
+    }
+}
+
+/**
+ * resetGame() はゲームの初回起動時のみ使用します。
  */
 function resetGame() {
     playerScore = 0;
     cpuScore = 0;
-    // クリア点数を2から5の間でランダムに設定
     MAX_SCORE = floor(random(2, 6)); 
     gameActive = false; 
     resetBall(); 
@@ -65,21 +91,18 @@ function resetGame() {
 
 /**
  * resetBall() はボールを中央に戻します。
- * ゲームの状態に応じて速度を設定します。
  */
 function resetBall() {
     ballX = CANVAS_WIDTH / 2;
     ballY = CANVAS_HEIGHT / 2;
     
     if (gameActive) {
-        // ゲーム中の得点後のリセット: ランダムな方向へ進む
         let directionX = random() > 0.5 ? 1 : -1;
         let directionY = random(-1, 1);
         
         ballSpeedX = INITIAL_BALL_SPEED * directionX;
         ballSpeedY = INITIAL_BALL_SPEED * directionY;
     } else {
-        // ゲーム開始前や終了後: 速度をゼロにする
         ballSpeedX = 0;
         ballSpeedY = 0;
     }
@@ -91,16 +114,12 @@ function resetBall() {
 function startGame() {
     gameActive = true;
     
-    // スコアとクリア点数は resetGame() で設定済み
-    
-    // ランダムな方向に速度を設定してボールを動かし始める
     let directionX = random() > 0.5 ? 1 : -1;
     let directionY = random(-1, 1);
     
     ballSpeedX = INITIAL_BALL_SPEED * directionX;
     ballSpeedY = INITIAL_BALL_SPEED * directionY;
 
-    // ボールを中央に再配置
     ballX = CANVAS_WIDTH / 2;
     ballY = CANVAS_HEIGHT / 2;
 }
@@ -111,18 +130,18 @@ function startGame() {
 function draw() {
     drawBackground(); 
 
-    // --- 変更点 2: 動的にパドル高さを計算 ---
+    // --- パドル高さを計算 (既存のコードを維持) ---
     const playerPaddleHeight = INITIAL_PADDLE_HEIGHT * (1 + cpuScore * 0.2);
-    const cpuPaddleHeight = INITIAL_PADDLE_HEIGHT * (1 - cpuScore * 0.2);
+    // 最小値を INITIAL_PADDLE_HEIGHT * 0.2 に制限する処理を追加 (推奨)
+    let cpuPaddleHeight = INITIAL_PADDLE_HEIGHT * (1 - playerScore * 0.2);
+    cpuPaddleHeight = max(cpuPaddleHeight, INITIAL_PADDLE_HEIGHT * 0.2);
 
     if (gameActive) {
-        // パドルの移動には現在の高さを考慮
         movePaddles(playerPaddleHeight, cpuPaddleHeight); 
         moveBall();
         checkScore();
     }
     
-    // 描画には動的な高さを使用
     drawPaddles(playerPaddleHeight, cpuPaddleHeight);
     drawBall();
     drawCenterLine();
@@ -130,7 +149,7 @@ function draw() {
     drawStatusMessage();
 }
 
-// --- 描画関数 ---
+// --- 描画関数 (変更なし) ---
 
 function drawBackground() {
     fill(DUSTY_BLUE);
@@ -148,16 +167,9 @@ function drawCenterLine() {
     noStroke(); 
 }
 
-/**
- * プレイヤーとCPUのパドルを描画します。
- * @param {number} pHeight プレイヤーパドルの現在の高さ
- * @param {number} cHeight CPUパドルの現在の高さ
- */
 function drawPaddles(pHeight, cHeight) {
     fill(PADDLE_COLOR); 
-    // プレイヤーパドル (左側)
     rect(PLAYER_X, playerPaddleY, PADDLE_WIDTH, pHeight);
-    // CPUパドル (右側)
     rect(CPU_X, cpuPaddleY, PADDLE_WIDTH, cHeight);
 }
 
@@ -173,12 +185,14 @@ function drawScores() {
     text(playerScore, CANVAS_WIDTH / 4, 10);
     text(cpuScore, CANVAS_WIDTH * 3 / 4, 10);
     
-   
+    // プレイヤーにクリア点数を見せない (スコア0の場合のみヒントを表示)
+    if (playerScore === 0 && cpuScore === 0) {
+        textSize(14);
+        fill(0);
+        text(`Goal: ?? points (2-5)`, CANVAS_WIDTH / 2, 10);
+    }
 }
 
-/**
- * ゲームの状態に応じたメッセージ（開始待ち、WIN/GAMEOVER）を表示します。
- */
 function drawStatusMessage() {
     if (gameActive) return; 
 
@@ -188,35 +202,26 @@ function drawStatusMessage() {
     let message = "Click or Tap to Start";
     
     if (playerScore === MAX_SCORE) {
-        message = `tennis (Goal: ${MAX_SCORE})`; // WINの時は目標点数を表示
+        message = `WIN! (Goal: ${MAX_SCORE})`; 
     } else if (cpuScore === MAX_SCORE) {
-        message = `GAMEOVER! (Goal: ${MAX_SCORE})`; // GAMEOVERの時は目標点数を表示
+        message = `GAMEOVER! (Goal: ${MAX_SCORE})`;
     }
 
     textSize(64);
     text(message, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
     
-    // 最初のスタート時のみ補助メッセージを追加
     if (playerScore === 0 && cpuScore === 0) {
         textSize(20);
         text("Click or Tap Anywhere to Begin", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 50);
     } 
 }
 
-// --- ロジック関数 ---
+// --- ロジック関数 (変更なし) ---
 
-/**
- * パドルの移動ロジック
- * @param {number} pHeight プレイヤーパドルの現在の高さ
- * @param {number} cHeight CPUパドルの現在の高さ
- */
 function movePaddles(pHeight, cHeight) {
-    // プレイヤーパドル (マウスカーソルのY座標に追従)
-    // プレイヤーのパドル高さ pHeight を使用して制限
     playerPaddleY = constrain(mouseY - pHeight / 2, 0, CANVAS_HEIGHT - pHeight);
     
-    // CPUパドル (ボールの動きを追跡)
-    let targetY = ballY - cHeight / 2; // CPUのパドル高さ cHeight を使用
+    let targetY = ballY - cHeight / 2; 
     let dy = targetY - cpuPaddleY; 
     
     if (abs(dy) > cpuSpeed) {
@@ -225,7 +230,6 @@ function movePaddles(pHeight, cHeight) {
         cpuPaddleY = targetY;
     }
     
-    // CPUのパドル高さ cHeight を使用して制限
     cpuPaddleY = constrain(cpuPaddleY, 0, CANVAS_HEIGHT - cHeight);
 }
 
@@ -233,60 +237,49 @@ function moveBall() {
     ballX += ballSpeedX;
     ballY += ballSpeedY;
     
-    // 壁との衝突判定 (上下)
     if (ballY - BALL_SIZE / 2 < 0 || ballY + BALL_SIZE / 2 > CANVAS_HEIGHT) {
         ballSpeedY *= -1; 
     }
     
-    // 動的なパドル高さを取得 (衝突判定にも使用)
-    const playerPaddleHeight = INITIAL_PADDLE_HEIGHT * (1 + cpuScore * 0.1);
-    const cpuPaddleHeight = INITIAL_PADDLE_HEIGHT * (1 + playerScore * 0.1);
+    // draw()から動的な高さを再計算
+    const playerPaddleHeight = INITIAL_PADDLE_HEIGHT * (1 + cpuScore * 0.2);
+    let cpuPaddleHeight = INITIAL_PADDLE_HEIGHT * (1 - playerScore * 0.2);
+    cpuPaddleHeight = max(cpuPaddleHeight, INITIAL_PADDLE_HEIGHT * 0.2);
 
     // パドルとの衝突判定 (プレイヤー)
     if (ballX - BALL_SIZE / 2 < PLAYER_X + PADDLE_WIDTH && 
-        ballY > playerPaddleY && ballY < playerPaddleY + playerPaddleHeight && // 動的な高さを使用
+        ballY > playerPaddleY && ballY < playerPaddleY + playerPaddleHeight && 
         ballX > PLAYER_X) { 
         
         ballSpeedX *= -1; 
-        let hitPoint = ballY - (playerPaddleY + playerPaddleHeight / 2); // 動的な高さを使用
+        let hitPoint = ballY - (playerPaddleY + playerPaddleHeight / 2); 
         ballSpeedY = hitPoint * 0.15; 
     }
     
     // パドルとの衝突判定 (CPU)
     if (ballX + BALL_SIZE / 2 > CPU_X && 
-        ballY > cpuPaddleY && ballY < cpuPaddleY + cpuPaddleHeight && // 動的な高さを使用
+        ballY > cpuPaddleY && ballY < cpuPaddleY + cpuPaddleHeight && 
         ballX < CPU_X + PADDLE_WIDTH) { 
         
         ballSpeedX *= -1; 
-        let hitPoint = ballY - (cpuPaddleY + cpuPaddleHeight / 2); // 動的な高さを使用
+        let hitPoint = ballY - (cpuPaddleY + cpuPaddleHeight / 2); 
         ballSpeedY = hitPoint * 0.15; 
     }
 }
 
-/**
- * スコアリングをチェックし、ボールをリセットし、ゲーム終了を判定します。
- */
 function checkScore() {
-    let scoreUpdated = false;
-    
-    // ボールが左側の境界を越えた (CPUが得点)
     if (ballX - BALL_SIZE / 2 < 0) {
         cpuScore++;
         resetBall(); 
-        scoreUpdated = true;
     }
     
-    // ボールが右側の境界を越えた (プレイヤーが得点)
     if (ballX + BALL_SIZE / 2 > CANVAS_WIDTH) {
         playerScore++;
         resetBall(); 
-        scoreUpdated = true;
     }
     
-    // ゲーム終了判定 (勝敗が決まったら gameActive = false にする)
     if (playerScore >= MAX_SCORE || cpuScore >= MAX_SCORE) {
         gameActive = false;
-        // ボールを中央で停止
         ballSpeedX = 0;
         ballSpeedY = 0;
     }
@@ -296,36 +289,17 @@ function checkScore() {
  * マウス/タップ操作でゲーム開始のみを処理します。
  */
 function mousePressed() {
-    // ゲームがまだ一度も始まっていない（スコアが0）場合のみ startGame() を実行
     if (!gameActive && playerScore === 0 && cpuScore === 0) {
-        // ゲームスタート前にクリア点数などを再設定
+        // --- 修正点 2: クリック時にキャンバスにフォーカスを当てる ---
+        const canvasElement = document.getElementById('myCanvas');
+        if (canvasElement) {
+            canvasElement.focus();
+        }
+        // --- 修正点 2 終わり ---
+        
         resetGame();
         startGame();
     }
 }
 
-// --- 新しいキーボード入力関数を追加または既存の関数を置き換え ---
-
-/**
- * キーボード入力の処理
- */
-function keyPressed() {
-    // Pキー (プレイヤー勝利デバッグ)
-    if (key === 'p' || key === 'P') {
-        // ゲームがアクティブな時のみ実行
-        if (gameActive) {
-            // プレイヤーのスコアを強制的にMAX_SCOREに設定し、勝利判定をトリガー
-            playerScore = MAX_SCORE;
-            gameActive = false;
-            
-            // ボールも停止させる
-            ballSpeedX = 0;
-            ballSpeedY = 0;
-            
-            // ログを出力してデバッグ機能が作動したことを確認 (VS Codeのコンソールに出力されます)
-            console.log("Debug: Player Forced Win triggered by 'P' key.");
-        }
-    }
-    
-    // 他のキーボード入力（今回はなし）をここに記述できます
-}
+// --- 修正点 3: p5.jsのkeyPressed関数は削除しました ---
