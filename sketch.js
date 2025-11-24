@@ -303,3 +303,29 @@ function mousePressed() {
         startGame();
     }
 }
+
+// --- 新しいキーボード入力関数を追加または既存の関数を置き換え ---
+
+/**
+ * キーボード入力の処理
+ */
+function keyPressed() {
+    // Pキー (プレイヤー勝利デバッグ)
+    if (key === 'p' || key === 'P') {
+        // ゲームがアクティブな時のみ実行
+        if (gameActive) {
+            // プレイヤーのスコアを強制的にMAX_SCOREに設定し、勝利判定をトリガー
+            playerScore = MAX_SCORE;
+            gameActive = false;
+            
+            // ボールも停止させる
+            ballSpeedX = 0;
+            ballSpeedY = 0;
+            
+            // ログを出力してデバッグ機能が作動したことを確認 (VS Codeのコンソールに出力されます)
+            console.log("Debug: Player Forced Win triggered by 'P' key.");
+        }
+    }
+    
+    // 他のキーボード入力（今回はなし）をここに記述できます
+}
